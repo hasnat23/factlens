@@ -1,0 +1,82 @@
+[
+  {
+    "scorer": "lexical-overlap",
+    "n": 900,
+    "seconds_per_summary": 0.006,
+    "response/mean": {
+      "roc_auc": 0.6755,
+      "pr_auc": 0.3747
+    },
+    "response/min": {
+      "roc_auc": 0.6373,
+      "pr_auc": 0.2965
+    },
+    "response/gca": {
+      "roc_auc": 0.6456,
+      "pr_auc": 0.3008
+    },
+    "response/gca_strict": {
+      "roc_auc": 0.6372,
+      "pr_auc": 0.2965
+    },
+    "response/harmonic": {
+      "roc_auc": 0.6509,
+      "pr_auc": 0.3074
+    },
+    "response/soft_min": {
+      "roc_auc": 0.6485,
+      "pr_auc": 0.3114
+    },
+    "sentence": {
+      "roc_auc": 0.685,
+      "pr_auc": 0.0865,
+      "n": 4992
+    },
+    "response/holistic_best_window": {
+      "roc_auc": 0.6069,
+      "pr_auc": 0.3073
+    }
+  },
+  {
+    "scorer": "MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli",
+    "n": 900,
+    "seconds_per_summary": 5.463,
+    "response/mean": {
+      "roc_auc": 0.6964,
+      "pr_auc": 0.3657
+    },
+    "response/min": {
+      "roc_auc": 0.6821,
+      "pr_auc": 0.3704
+    },
+    "response/gca": {
+      "roc_auc": 0.6913,
+      "pr_auc": 0.3724
+    },
+    "response/gca_strict": {
+      "roc_auc": 0.6821,
+      "pr_auc": 0.3704
+    },
+    "response/harmonic": {
+      "roc_auc": 0.6892,
+      "pr_auc": 0.3731
+    },
+    "response/soft_min": {
+      "roc_auc": 0.6926,
+      "pr_auc": 0.3575
+    },
+    "sentence": {
+      "roc_auc": 0.7929,
+      "pr_auc": 0.1816,
+      "n": 4992
+    },
+    "response/holistic_best_window": {
+      "roc_auc": 0.5798,
+      "pr_auc": 0.2989
+    },
+    "response/holistic_truncated": {
+      "roc_auc": 0.6319,
+      "pr_auc": 0.3206
+    }
+  }
+]

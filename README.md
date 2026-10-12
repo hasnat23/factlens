@@ -54,12 +54,44 @@ larger `α` makes a single unsupported sentence pull the whole summary down, whi
 
 ## 📊 Benchmark: RAGTruth (900 human-annotated summaries)
 
-The benchmark compares holistic scoring (the whole summary as one NLI hypothesis) with factlens' sentence-level scoring and
-each aggregator, at both **response level** (does the summary contain any hallucination?) and **sentence level** (does this
-sentence overlap a human-annotated hallucinated span?), on the [RAGTruth](https://huggingface.co/datasets/wandb/RAGTruth-processed)
-summarization test split.
+Detecting hallucinations in the 900 summaries of the [RAGTruth](https://huggingface.co/datasets/wandb/RAGTruth-processed) test split,
+which humans annotated at span level. A summary is *hallucinated* if it contains any annotated span (22.7% of summaries); a sentence is
+hallucinated if it overlaps one (5.2% of 4,992 sentences). Scores are ROC-AUC and PR-AUC of `1 − score` as a detector, using the default
+model `DeBERTa-v3-base-mnli-fever-anli`.
 
-> ⏳ Full results are being computed and will be added here. Reproduce with `python benchmarks/ragtruth.py`.
+**Response level: is anything in this summary hallucinated?**
+
+| Method | ROC-AUC | PR-AUC |
+|---|---:|---:|
+| Holistic, source truncated to 512 tokens (naive NLI) | 0.632 | 0.321 |
+| Holistic, best source window | 0.580 | 0.299 |
+| Lexical overlap baseline (sentence-level, mean) | 0.675 | 0.375 |
+| **factlens, sentence-level + `mean`** | **0.696 | 0.366** |
+| factlens, sentence-level + `gca` | 0.691 | 0.372 |
+| factlens, sentence-level + `min` | 0.682 | 0.370 |
+| *random* | 0.500 | 0.227 |
+
+**Sentence level: which sentence is hallucinated?**
+
+| Method | ROC-AUC | PR-AUC |
+|---|---:|---:|
+| Lexical overlap baseline | 0.685 | 0.086 |
+| **factlens (NLI support score)** | **0.793 | 0.182** |
+| *random* | 0.500 | 0.052 |
+
+**Takeaways**
+
+- **Scoring sentence by sentence beats scoring the whole summary**: ROC-AUC 0.696 vs 0.580–0.632 with the same NLI model. A long
+  summary with one bad sentence still "mostly entails" the source, so holistic scores hide the error.
+- **Sentence-level localisation works**: PR-AUC 0.182 is 3.5× the random baseline and about 2× lexical overlap, so the flagged
+  sentences really are the suspicious ones.
+- **Honest caveats**: RAGTruth is hard. Many annotated hallucinations are subtle additions rather than contradictions, and a lexical-overlap
+  baseline is surprisingly competitive at the response level (0.676). On this dataset `mean` aggregation edged out `gca`/`min` for
+  ranking whole summaries; `gca` is still the default because it guarantees that one unsupported sentence lowers the score, which is the
+  behaviour you want when you act on a threshold.
+- Speed: 5.5 s per summary on an 8 GB M1 (MPS), dominated by long source documents (~93 sentence × window pairs per summary).
+
+Reproduce: `pip install -e ".[bench]" && python benchmarks/ragtruth.py` · raw numbers in [`benchmarks/results/ragtruth.json`](benchmarks/results/ragtruth.json).
 
 ## 🚀 Installation & usage
 
