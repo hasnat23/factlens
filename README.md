@@ -2,14 +2,16 @@
 
 [![CI](https://github.com/hasnat23/factlens/actions/workflows/ci.yml/badge.svg)](https://github.com/hasnat23/factlens/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Demo-Hugging%20Face-yellow.svg)](HF_SPACE_URL)
+[![Hugging Face Space](https://img.shields.io/badge/%F0%9F%A4%97%20Demo-Hugging%20Face-yellow.svg)](https://huggingface.co/spaces/chhasnat23/factlens)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **Which sentence of your LLM's summary is hallucinated?** factlens checks every sentence of a generated summary or RAG answer
 against its source with an NLI model, labels it **supported / unverified / contradicted**, points to the best supporting evidence,
 and aggregates everything into one factual-consistency score.
 
-🤗 **[Try the live demo](HF_SPACE_URL)**
+🤗 **[Try the live demo](https://huggingface.co/spaces/chhasnat23/factlens)**: it runs entirely in your browser (transformers.js, `nli-deberta-v3-xsmall`), so no data leaves your machine.
+
+![factlens demo](assets/demo.png)
 
 ```python
 from factlens import FactLens
@@ -80,7 +82,10 @@ factlens check --source article.txt --summary summary.txt
 factlens batch data.jsonl --out scored.jsonl          # lines: {"source": ..., "summary": ...}
 ```
 
-**Demo app**
+**Demo apps**
+
+- [`space/index.html`](space/index.html) is the browser port deployed on Hugging Face (static, no server).
+- [`app.py`](app.py) is a Gradio app using the full Python package and the larger default model:
 
 ```bash
 pip install "factlens[app] @ git+https://github.com/hasnat23/factlens" && python app.py

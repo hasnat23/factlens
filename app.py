@@ -52,7 +52,7 @@ with gr.Blocks(title="factlens: sentence-level hallucination detection") as demo
         label="Sentences",
         color_map={"supported": "green", "unverified": "orange", "contradicted": "red"},
     )
-    table = gr.Dataframe(headers=["sentence", "label", "support", "contradiction", "best evidence"], wrap=True)
+    table = gr.Dataframe(headers=["sentence", "label", "support", "max contradiction", "best evidence"], wrap=True)
     button.click(analyse, [source, summary, aggregator], [verdict, highlighted, table])
     demo.load(analyse, [source, summary, aggregator], [verdict, highlighted, table])
 

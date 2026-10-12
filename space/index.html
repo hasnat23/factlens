@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>factlens demo</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>" />
+<style>
+  :root {
+    --bg: #f7f7fb; --panel: #ffffff; --text: #1d1d2b; --muted: #6b6b80; --border: #e3e3ee; --accent: #4f46e5;
+    --ok-bg: #dcfce7; --ok-fg: #166534; --warn-bg: #fef3c7; --warn-fg: #92400e; --bad-bg: #fee2e2; --bad-fg: #991b1b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f0f17; --panel: #181824; --text: #ececf4; --muted: #9a9ab0; --border: #2a2a3b; --accent: #818cf8;
+      --ok-bg: #14532d; --ok-fg: #bbf7d0; --warn-bg: #713f12; --warn-fg: #fde68a; --bad-bg: #7f1d1d; --bad-fg: #fecaca;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f0f17; --panel: #181824; --text: #ececf4; --muted: #9a9ab0; --border: #2a2a3b; --accent: #818cf8;
+    --ok-bg: #14532d; --ok-fg: #bbf7d0; --warn-bg: #713f12; --warn-fg: #fde68a; --bad-bg: #7f1d1d; --bad-fg: #fecaca;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 26px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  .sub a { color: var(--accent); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
+  label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  textarea { width: 100%; min-height: 220px; resize: vertical; border: 1px solid var(--border); border-radius: 8px; padding: 10px;
+    background: var(--bg); color: var(--text); font: inherit; }
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+  button { background: var(--accent); color: #fff; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  button:disabled { opacity: .5; cursor: progress; }
+  select { font: inherit; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel); color: var(--text); }
+  #status { color: var(--muted); font-size: 14px; }
+  .score { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .highlight { line-height: 2; }
+  .s { padding: 2px 4px; border-radius: 4px; }
+  .supported { background: var(--ok-bg); color: var(--ok-fg); }
+  .unverified { background: var(--warn-bg); color: var(--warn-fg); }
+  .contradicted { background: var(--bad-bg); color: var(--bad-fg); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 6px; border-top: 1px solid var(--border); vertical-align: top; }
+  th { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; border-top: 0; }
+  .pill { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .ev { color: var(--muted); }
+  .legend span { margin-right: 10px; }
+  #results { display: none; margin-top: 8px; }
+  #results.on { display: block; }
+  .stack > * + * { margin-top: 16px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🔎 factlens</h1>
+  <p class="sub">Sentence-level hallucination detection. Each sentence of the summary is checked against the source with an NLI model running
+    <strong>in your browser</strong> (no data leaves your machine). Browser port of
+    <a href="https://github.com/hasnat23/factlens">github.com/hasnat23/factlens</a>.</p>
+
+  <div class="grid">
+    <div class="panel"><label for="source">Source document</label><textarea id="source"></textarea></div>
+    <div class="panel"><label for="summary">Generated summary / answer</label><textarea id="summary"></textarea></div>
+  </div>
+
+  <div class="row">
+    <button id="run" disabled>Loading model…</button>
+    <select id="agg" aria-label="Aggregator">
+      <option value="gca">gca (default)</option><option value="mean">mean</option><option value="min">min</option>
+    </select>
+    <span id="status">Downloading the NLI model (~90 MB, cached after the first visit)…</span>
+  </div>
+
+  <section id="results" class="stack">
+    <div class="panel">
+      <label>Factual consistency</label>
+      <div><span class="score" id="score"></span> <span id="flagged" class="ev"></span></div>
+      <p class="highlight" id="highlight"></p>
+      <div class="legend ev"><span class="s supported">supported</span><span class="s unverified">unverified</span><span class="s contradicted">contradicted</span></div>
+    </div>
+    <div class="panel">
+      <label>Per-sentence details</label>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Sentence</th><th>Label</th><th>Support</th><th title="Highest contradiction probability against any source window; only used when support is low">Max contradiction</th><th>Best evidence</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+    </div>
+  </section>
+</main>
+
+<script type="module">
+import { AutoTokenizer, AutoModelForSequenceClassification } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0/+esm";
+
+const MODEL = "Xenova/nli-deberta-v3-xsmall";
+const CHUNK = 3, STRIDE = 2, BATCH = 8, SUPPORT_T = 0.5, CONTRA_T = 0.5;
+
+document.getElementById("source").value =
+  "The FBI charged a Philadelphia woman on Thursday with trying to travel overseas to fight for ISIS. She's one of three women arrested this week on terror charges. Two New York women were also taken into custody. An FBI complaint cites numerous social media messages dating back to August 2013 that were sent by Keonna Thomas, 30. In one exchange, a man told Thomas he could help her get to Syria. Thomas purchased an electronic visa to Turkey on March 23, the complaint says.";
+document.getElementById("summary").value =
+  "A Philadelphia woman was charged by the FBI with trying to travel overseas to fight for ISIS. Thomas purchased a ticket to Barcelona but was arrested at the airport. The FBI cited social media messages dating back to 2013 as evidence.";
+
+// --- sentence splitting with offsets (port of factlens.segment) ---
+const ABBR = new Set("mr mrs ms dr prof sr jr st mt vs etc inc ltd co corp no fig approx dept est gen gov sen rep lt col sgt capt u.s u.k e.g i.e jan feb mar apr jun jul aug sep sept oct nov dec".split(" "));
+function splitSentences(text) {
+  const bounds = new Set();
+  const re = /[.!?]+["'”’)\]]*(?=\s+)/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const end = m.index + m[0].length;
+    if (text[m.index] === ".") {
+      const tok = (/([A-Za-z.]+)$/.exec(text.slice(0, m.index)) || [""])[0].toLowerCase().replace(/\.+$/, "");
+      if (ABBR.has(tok) || (tok.length === 1 && /[a-z]/.test(tok))) continue;
+    }
+    const rest = text.slice(end).trimStart();
+    if (rest && !/^[A-Z0-9"'“(\[]/.test(rest)) continue;
+    bounds.add(end);
+  }
+  for (const p of text.matchAll(/\n\s*\n/g)) bounds.add(p.index);
+  const cuts = [...bounds].sort((a, b) => a - b).concat(text.length);
+  const out = [];
+  let cursor = 0;
+  for (const b of cuts) {
+    const chunk = text.slice(cursor, b), t = chunk.trim();
+    if (t) {
+      const start = cursor + (chunk.length - chunk.trimStart().length);
+      out.push({ text: t, start, end: start + t.length });
+    }
+    cursor = b;
+  }
+  return out;
+}
+function windows(sents) {
+  if (sents.length <= CHUNK) return [sents.map(s => s.text).join(" ")];
+  const out = [];
+  for (let i = 0; i < sents.length; i += STRIDE) {
+    out.push(sents.slice(i, i + CHUNK).map(s => s.text).join(" "));
+    if (i + CHUNK >= sents.length) break;
+  }
+  return out;
+}
+const AGG = {
+  mean: s => s.reduce((a, b) => a + b, 0) / s.length,
+  min: s => Math.min(...s),
+  gca: s => { const m = AGG.mean(s); return m <= 0 ? m : m * Math.pow(Math.min(...s) / m, 0.5); },
+};
+
+// --- model ---
+const status = document.getElementById("status"), runBtn = document.getElementById("run");
+let tokenizer, model, ENT, CON;
+try {
+  tokenizer = await AutoTokenizer.from_pretrained(MODEL);
+  model = await AutoModelForSequenceClassification.from_pretrained(MODEL, { dtype: "q8" });
+  const labels = Object.entries(model.config.id2label).map(([k, v]) => [v.toLowerCase(), +k]);
+  ENT = labels.find(([v]) => v.startsWith("entail"))[1];
+  CON = labels.find(([v]) => v.startsWith("contra"))[1];
+  runBtn.disabled = false; runBtn.textContent = "Check";
+  status.textContent = "Model ready.";
+} catch (e) {
+  status.textContent = "Could not load the model: " + e.message;
+}
+
+async function scorePairs(premises, hyps, onProgress) {
+  const out = [];
+  for (let i = 0; i < premises.length; i += BATCH) {
+    const inputs = await tokenizer(premises.slice(i, i + BATCH), { text_pair: hyps.slice(i, i + BATCH), padding: true, truncation: true, max_length: 512 });
+    const { logits } = await model(inputs);
+    const [n, k] = logits.dims, d = logits.data;
+    for (let r = 0; r < n; r++) {
+      const row = Array.from(d.slice(r * k, r * k + k)), mx = Math.max(...row);
+      const ex = row.map(x => Math.exp(x - mx)), z = ex.reduce((a, b) => a + b, 0);
+      out.push({ ent: ex[ENT] / z, con: ex[CON] / z });
+    }
+    onProgress(Math.min(i + BATCH, premises.length), premises.length);
+  }
+  return out;
+}
+
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+runBtn.addEventListener("click", async () => {
+  const source = document.getElementById("source").value, summary = document.getElementById("summary").value;
+  const chunks = windows(splitSentences(source)), claims = splitSentences(summary);
+  if (!chunks.length || !claims.length) { status.textContent = "Enter both a source and a summary."; return; }
+  runBtn.disabled = true;
+  const t0 = performance.now();
+  const P = [], H = [];
+  for (const c of claims) for (const w of chunks) { P.push(w); H.push(c.text); }
+  const scores = await scorePairs(P, H, (d, n) => (status.textContent = `Scoring ${d}/${n} sentence × window pairs…`));
+  const results = claims.map((c, i) => {
+    const win = scores.slice(i * chunks.length, (i + 1) * chunks.length);
+    let best = 0;
+    win.forEach((s, j) => { if (s.ent > win[best].ent) best = j; });
+    const support = win[best].ent, contra = Math.max(...win.map(s => s.con));
+    const label = support >= SUPPORT_T ? "supported" : contra >= CONTRA_T ? "contradicted" : "unverified";
+    return { ...c, support, contra, label, evidence: chunks[best] };
+  });
+  const agg = document.getElementById("agg").value;
+  const score = AGG[agg](results.map(r => r.support));
+  const flagged = results.filter(r => r.label !== "supported").length;
+
+  document.getElementById("score").textContent = score.toFixed(2);
+  document.getElementById("flagged").textContent = `${flagged} of ${results.length} sentences flagged · aggregator: ${agg}`;
+  let html = "", cur = 0;
+  for (const r of results) {
+    html += esc(summary.slice(cur, r.start)) + `<span class="s ${r.label}" title="support ${r.support.toFixed(2)}">${esc(summary.slice(r.start, r.end))}</span>`;
+    cur = r.end;
+  }
+  document.getElementById("highlight").innerHTML = html + esc(summary.slice(cur));
+  document.getElementById("rows").innerHTML = results.map(r =>
+    `<tr><td>${esc(r.text)}</td><td><span class="pill ${r.label}">${r.label}</span></td><td>${r.support.toFixed(3)}</td><td>${r.contra.toFixed(3)}</td><td class="ev">${esc(r.evidence)}</td></tr>`).join("");
+  document.getElementById("results").classList.add("on");
+  status.textContent = `Done in ${((performance.now() - t0) / 1000).toFixed(1)} s.`;
+  runBtn.disabled = false;
+});
+</script>
+</body>
+</html>

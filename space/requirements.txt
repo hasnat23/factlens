@@ -1,4 +1,0 @@
-factlens @ git+https://github.com/hasnat23/factlens
-gradio>=5
-torch
-transformers>=4.40
